@@ -4,6 +4,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/Venu-exe/takeoverhunter/actions/workflows/tests.yml/badge.svg)](https://github.com/Venu-exe/takeoverhunter/actions/workflows/tests.yml)
 [![Tests](https://img.shields.io/badge/tests-6%20passing-brightgreen)](#testing)
 [![Deps](https://img.shields.io/badge/dependencies-zero-blue)](#)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
