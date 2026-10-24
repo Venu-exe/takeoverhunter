@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TakeoverHunter Dashboard</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--fg:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--danger:#f87171;--warn:#fbbf24;--ok:#34d399}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:1rem 1.5rem;border-bottom:1px solid #334155;display:flex;align-items:center;gap:1rem}
+header h1{margin:0;font-size:1.3rem}header span{color:var(--muted);font-size:.9rem}
+.container{max-width:1100px;margin:0 auto;padding:1.5rem}
+.card{background:var(--card);border-radius:.75rem;padding:1.25rem;margin-bottom:1.25rem}
+label{display:block;margin:.5rem 0 .25rem;color:var(--muted);font-size:.85rem}
+input,textarea{width:100%;padding:.6rem;border:1px solid #334155;border-radius:.5rem;background:#0f172a;color:var(--fg)}
+button{background:var(--accent);color:#0f172a;border:none;padding:.6rem 1.2rem;border-radius:.5rem;cursor:pointer;font-weight:600;margin-top:.5rem}
+button:hover{opacity:.9}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th,td{padding:.5rem;border-bottom:1px solid #334155;text-align:left}
+th{color:var(--muted)}
+.badge{padding:.15rem .5rem;border-radius:.3rem;font-size:.75rem;font-weight:600}
+.high{background:#7f1d1d;color:#fecaca}.medium{background:#78350f;color:#fde68a}.low{background:#1e293b;color:#cbd5e1}
+.cand{color:var(--danger);font-weight:700}
+.stats{display:flex;gap:2rem;margin-bottom:1rem}.stat .n{font-size:1.6rem;font-weight:700}.stat .l{color:var(--muted);font-size:.8rem}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header><h1>🎯 TakeoverHunter</h1><span>Subdomain takeover detection dashboard</span></header>
+<div class="container">
+  <div class="card">
+    <h3>New scan</h3>
+    <label>Root domain (enumerates via crt.sh)</label>
+    <input id="domain" placeholder="example.com">
+    <label>Or host list (one per line)</label>
+    <textarea id="hosts" rows="4" placeholder="sub1.example.com&#10;sub2.example.com"></textarea>
+    <div class="row">
+      <div><label>Threads</label><input id="threads" type="number" value="20"></div>
+      <div><label>Timeout (s)</label><input id="timeout" type="number" value="8"></div>
+    </div>
+    <button onclick="runScan()">Run scan</button>
+    <div id="status" class="muted" style="margin-top:.5rem"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-total">0</div><div class="l">Total hosts</div></div>
+    <div class="stat"><div class="n" id="s-cand" style="color:var(--danger)">0</div><div class="l">Candidates</div></div>
+  </div>
+  <div class="card">
+    <h3>Results</h3>
+    <table><thead><tr><th>Host</th><th>CNAME</th><th>Service</th><th>Confidence</th><th>Fingerprint</th></tr></thead>
+    <tbody id="results"></tbody></table>
+  </div>
+  <div class="card">
+    <h3>Scan history</h3>
+    <table><thead><tr><th>ID</th><th>Target</th><th>Total</th><th>Candidates</th><th>When</th></tr></thead>
+    <tbody id="history"></tbody></table>
+  </div>
+</div>
+<script>
+async function runScan(){
+  const domain=document.getElementById('domain').value.trim();
+  const hosts=document.getElementById('hosts').value.trim().split(/\n/).map(s=>s.trim()).filter(Boolean);
+  const threads=parseInt(document.getElementById('threads').value)||20;
+  const timeout=parseInt(document.getElementById('timeout').value)||8;
+  const status=document.getElementById('status');
+  status.textContent='Scanning...';
+  const body={threads,timeout};
+  if(domain) body.domain=domain;
+  if(hosts.length) body.hosts=hosts;
+  const r=await fetch('/api/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data=await r.json();
+  if(data.error){status.textContent='Error: '+data.error;return;}
+  status.textContent='Done: '+data.total+' hosts, '+data.candidates+' candidates';
+  document.getElementById('s-total').textContent=data.total;
+  document.getElementById('s-cand').textContent=data.candidates;
+  const tb=document.getElementById('results');
+  tb.innerHTML=data.results.map(x=>`<tr>
+    <td>${x.host}</td><td>${x.cname||'-'}</td><td>${x.service||'-'}</td>
+    <td><span class="badge ${x.confidence||''}">${x.confidence||'-'}</span></td>
+    <td>${x.fingerprint||'-'}</td></tr>`).join('');
+  loadHistory();
+}
+async function loadHistory(){
+  const r=await fetch('/api/scans');const data=await r.json();
+  document.getElementById('history').innerHTML=data.map(s=>`<tr>
+    <td>${s.id}</td><td>${s.target}</td><td>${s.total}</td><td class="cand">${s.candidates}</td>
+    <td>${new Date(s.started_at*1000).toLocaleString()}</td></tr>`).join('');
+}
+loadHistory();
+</script>
+</body></html>
